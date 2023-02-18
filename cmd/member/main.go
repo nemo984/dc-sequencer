@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.SetFlags(log.Ltime | log.Lshortfile)
 
 	groupAddr := &net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5352}
 	c, err := net.ListenUDP("udp4", groupAddr)
@@ -30,6 +30,7 @@ func main() {
 	if len(os.Args) > 1 {
 		name = os.Args[1]
 	}
+	log.SetPrefix(fmt.Sprintf("[%s] ", name))
 
 	f, err := os.OpenFile(fmt.Sprintf("output-%s.txt", name), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {

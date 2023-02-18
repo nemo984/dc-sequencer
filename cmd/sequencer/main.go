@@ -7,6 +7,9 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.Ltime | log.Lshortfile)
+	log.SetPrefix("[Sequencer] ")
+
 	groupAddr := &net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5352}
 
 	c2, err := net.ListenUDP("udp4", groupAddr)
