@@ -19,7 +19,7 @@ const (
 type Message struct {
 	Type     MessageType
 	ID       string
-	Sequence uint
+	Sequence uint32
 	Data     map[string]interface{}
 }
 

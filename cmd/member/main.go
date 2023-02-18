@@ -26,12 +26,18 @@ func main() {
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	name := fmt.Sprintf("Group-%d", rand.Intn(100))
+	name := fmt.Sprintf("member-%d", rand.Intn(100))
 	if len(os.Args) > 1 {
 		name = os.Args[1]
 	}
-	gm := group.NewMember(pc, groupAddr, name)
 
+	f, err := os.OpenFile(fmt.Sprintf("output-%s.txt", name), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	gm := group.NewMember(name, pc, groupAddr, f)
 	log.Printf("Group member on %s is connected and listening to group on %s\n", pc.LocalAddr().String(), groupAddr.String())
 	go gm.SendMessages()
 	go gm.HandleDeliver()

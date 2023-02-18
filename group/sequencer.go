@@ -10,7 +10,7 @@ import (
 type Sequencer struct {
 	conn  *ipv4.PacketConn
 	group net.Addr
-	seq   uint64
+	seq   uint32
 }
 
 func NewSequencer(conn *ipv4.PacketConn, group net.Addr) *Sequencer {
@@ -29,11 +29,22 @@ func (s *Sequencer) Listen() {
 		}
 		if cm.Dst.IsMulticast() {
 			msg := &Message{}
-			_ = msg.Unmarshal(b, n)
-			log.Printf("Received msg: %+v from the group as sequencer\n", msg)
-
+			if err := msg.Unmarshal(b, n); err != nil {
+				log.Println("unmarshal msg err: ", err)
+				continue
+			}
 			if msg.Type == TypeMsg {
-				// sequencer order
+				resMsg := Message{
+					Type:     TypeOrder,
+					ID:       msg.ID,
+					Sequence: s.seq,
+				}
+				b, _ := resMsg.Marshal()
+				log.Printf("multicasting order msg: %+v to the group", resMsg)
+				if _, err := s.conn.WriteTo(b, nil, s.group); err != nil {
+					log.Println("group mutlicast err: ", err)
+				}
+				s.seq += 1
 			}
 		}
 	}
