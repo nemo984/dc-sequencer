@@ -12,8 +12,8 @@ const (
 type MessageType string
 
 const (
-	TypeMsg   MessageType = "MESSAGE"
-	TypeOrder MessageType = "ORDER"
+	MessageTypeMsg   MessageType = "MESSAGE"
+	MessageTypeOrder MessageType = "ORDER"
 )
 
 type Message struct {

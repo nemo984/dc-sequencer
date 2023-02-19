@@ -1,6 +1,8 @@
 package group
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net"
 
@@ -20,31 +22,47 @@ func NewSequencer(conn *ipv4.PacketConn, group net.Addr) *Sequencer {
 	}
 }
 
-func (s *Sequencer) Listen() {
+// Start spins up message handler for the sequencer.
+func (s *Sequencer) Start(ctx context.Context) error {
+	log.Println("Sequencer is running inside the group")
+	go func() {
+		<-ctx.Done()
+		s.conn.Close()
+	}()
+
 	b := make([]byte, bufferSize)
 	for {
-		n, cm, _, err := s.conn.ReadFrom(b)
-		if err != nil {
-			log.Println(err)
-		}
-		if cm.Dst.IsMulticast() {
-			msg := &Message{}
-			if err := msg.Unmarshal(b, n); err != nil {
-				log.Println("unmarshal msg err: ", err)
-				continue
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			n, cm, _, err := s.conn.ReadFrom(b)
+			if err != nil {
+				if errors.Is(err, net.ErrClosed) {
+					return ctx.Err()
+				}
+				log.Println(err)
 			}
-			if msg.Type == TypeMsg {
-				resMsg := Message{
-					Type:     TypeOrder,
-					ID:       msg.ID,
-					Sequence: s.seq,
+
+			if cm.Dst.IsMulticast() {
+				msg := &Message{}
+				if err := msg.Unmarshal(b, n); err != nil {
+					log.Println("unmarshal msg err: ", err)
+					continue
 				}
-				b, _ := resMsg.Marshal()
-				log.Printf("multicasting order msg: %+v to the group", resMsg)
-				if _, err := s.conn.WriteTo(b, nil, s.group); err != nil {
-					log.Println("group mutlicast err: ", err)
+				if msg.Type == MessageTypeMsg {
+					resMsg := Message{
+						Type:     MessageTypeOrder,
+						ID:       msg.ID,
+						Sequence: s.seq,
+					}
+					b, _ := resMsg.Marshal()
+					log.Printf("multicasting order msg: %+v to the group", resMsg)
+					if _, err := s.conn.WriteTo(b, nil, s.group); err != nil {
+						log.Println("group mutlicast err: ", err)
+					}
+					s.seq++
 				}
-				s.seq += 1
 			}
 		}
 	}
