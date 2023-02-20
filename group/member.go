@@ -17,7 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type GroupMember struct {
+type Member struct {
 	conn      *ipv4.PacketConn
 	group     net.Addr
 	name      string   // for identifying member
@@ -28,8 +28,8 @@ type GroupMember struct {
 	out       io.Writer // output for msg delivery
 }
 
-func NewMember(name string, conn *ipv4.PacketConn, group net.Addr, out io.Writer) *GroupMember {
-	return &GroupMember{
+func NewMember(name string, conn *ipv4.PacketConn, group net.Addr, out io.Writer) *Member {
+	return &Member{
 		conn:      conn,
 		group:     group,
 		holdBackQ: sync.Map{},
@@ -40,7 +40,7 @@ func NewMember(name string, conn *ipv4.PacketConn, group net.Addr, out io.Writer
 }
 
 // Start spins up all the goroutines to handle messages and for sending them.
-func (gm *GroupMember) Start(ctx context.Context) error {
+func (gm *Member) Start(ctx context.Context) error {
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		return gm.handleMessages(gctx)
@@ -63,7 +63,7 @@ func (gm *GroupMember) Start(ctx context.Context) error {
 }
 
 // multicast multicast message to the group.
-func (gm *GroupMember) multicast(data map[string]interface{}) error {
+func (gm *Member) multicast(data map[string]interface{}) error {
 	msg := &Message{
 		ID:   uuid.NewString(),
 		Data: data,
@@ -78,7 +78,7 @@ func (gm *GroupMember) multicast(data map[string]interface{}) error {
 }
 
 // handleMessages handles the message received from the group.
-func (gm *GroupMember) handleMessages(ctx context.Context) error {
+func (gm *Member) handleMessages(ctx context.Context) error {
 	b := make([]byte, bufferSize)
 	for {
 		select {
@@ -137,7 +137,7 @@ func (gm *GroupMember) handleMessages(ctx context.Context) error {
 }
 
 // sendMessages periodically and randomly send messages to the group.
-func (gm *GroupMember) sendMessages(ctx context.Context) error {
+func (gm *Member) sendMessages(ctx context.Context) error {
 	ticker := time.NewTicker(time.Duration(rand.Intn(2000)+1000) * time.Millisecond)
 	for {
 		select {
@@ -157,7 +157,7 @@ func (gm *GroupMember) sendMessages(ctx context.Context) error {
 }
 
 // handleDeliver delivers message inside the delivery queue.
-func (gm *GroupMember) handleDeliver() {
+func (gm *Member) handleDeliver() {
 	for msg := range gm.deliveryQ {
 		log.Printf("Delivering Msg ID: %s\n", msg.ID)
 		if gm.out != nil {
